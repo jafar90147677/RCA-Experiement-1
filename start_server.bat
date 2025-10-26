@@ -4,7 +4,7 @@ echo AI Log Helper - Starting Ollama Server
 echo ========================================
 echo.
 
-echo Starting Ollama server for TinyLlama...
+echo Starting Ollama server for Llama3...
 echo.
 echo IMPORTANT: Keep this window open while using AI Log Helper!
 echo The server must stay running for the application to work.
@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
     echo.
     echo Make sure:
     echo 1. Ollama is installed
-    echo 2. TinyLlama model is downloaded (run setup_tinyllama.bat first)
+    echo 2. Llama3 model is downloaded (run: ollama pull llama3)
     echo.
     pause
     exit /b 1
