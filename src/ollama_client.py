@@ -15,7 +15,16 @@ except ImportError:
 def _try_generate(ollama_url: str, model: str, prompt: str, timeout: int = 60) -> str:
     """Try to generate response using /api/generate endpoint."""
     url = f"{ollama_url.rstrip('/')}/api/generate"
-    payload = {"model": model, "prompt": prompt, "stream": False}
+    payload = {
+        "model": model, 
+        "prompt": prompt, 
+        "stream": False,
+        "options": {
+            "temperature": 0.1,  # Lower temperature for more consistent responses
+            "top_p": 0.9,        # Focus on most likely tokens
+            "repeat_penalty": 1.1 # Reduce repetition variations
+        }
+    }
     r = requests.post(url, json=payload, timeout=timeout)
     r.raise_for_status()
     data = r.json()
@@ -24,7 +33,16 @@ def _try_generate(ollama_url: str, model: str, prompt: str, timeout: int = 60) -
 def _try_chat(ollama_url: str, model: str, prompt: str, timeout: int = 60) -> str:
     """Try to generate response using /api/chat endpoint."""
     url = f"{ollama_url.rstrip('/')}/api/chat"
-    payload = {"model": model, "messages": [{"role":"user","content": prompt}], "stream": False}
+    payload = {
+        "model": model, 
+        "messages": [{"role":"user","content": prompt}], 
+        "stream": False,
+        "options": {
+            "temperature": 0.1,  # Lower temperature for more consistent responses
+            "top_p": 0.9,        # Focus on most likely tokens
+            "repeat_penalty": 1.1 # Reduce repetition variations
+        }
+    }
     r = requests.post(url, json=payload, timeout=timeout)
     r.raise_for_status()
     data = r.json()

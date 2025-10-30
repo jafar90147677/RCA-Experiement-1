@@ -7,7 +7,8 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 
-from analyzer import analyze_files
+from analyzer import analyze_files, analyze_user_actions, run_pattern_agent_once
+from mmm import extract_last_error_text, generate_mmm
 
 DEFAULT_OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL_NAME = os.environ.get("OLLAMA_MODEL", "llama3")
@@ -25,6 +26,7 @@ class App(tk.Tk):
         self.logs_path = tk.StringVar()
         self.log_files = []  # Store selected log files
         self.last_analysis = ""  # Store the last analysis results
+        self.pattern_agent_running = False  # Track Pattern Agent state
 
         # Top instructions
         tk.Label(self, text="Generate root cause of the log").pack(anchor="w", padx=10, pady=(10,0))
@@ -50,7 +52,11 @@ class App(tk.Tk):
         run_row = tk.Frame(self)
         run_row.pack(fill="x", padx=10, pady=10)
         tk.Button(run_row, text="Analyze", command=self.on_analyze, bg="#4CAF50", fg="white").pack(side="left", padx=(0,10))
-        tk.Button(run_row, text="Generate Prompt", command=self.generate_prompt, bg="#FF9800", fg="white").pack(side="left")
+        tk.Button(run_row, text="Generate Prompt", command=self.generate_prompt, bg="#FF9800", fg="white").pack(side="left", padx=(0,10))
+        tk.Button(run_row, text="Show Actions", command=self.show_actions, bg="#9C27B0", fg="white").pack(side="left")
+        tk.Button(run_row, text="MMM", command=self.on_mmm, bg="#3F51B5", fg="white").pack(side="left", padx=(10,0))
+        
+        # Pattern Agent controls removed (continuous mode not needed)
 
         # Output box
         self.output = scrolledtext.ScrolledText(self, wrap="word", height=20)
@@ -116,6 +122,19 @@ class App(tk.Tk):
                 self.last_analysis = result_text  # Store the analysis results
                 self.output.delete("1.0", "end")
                 self.output.insert("end", result_text)
+                
+                # Run Pattern Agent and append output
+                try:
+                    agent_output = run_pattern_agent_once(
+                        self.log_files, 
+                        DEFAULT_OLLAMA_URL, 
+                        MODEL_NAME
+                    )
+                    self.output.insert("end", "\n\n" + agent_output)
+                except Exception as e:
+                    # Show error in UI instead of silently ignoring
+                    self.output.insert("end", f"\n\n⚠️ Pattern Agent Error: {e}")
+                
                 self.status.set("Done")
             except OSError as e:
                 self.output.delete("1.0", "end")
@@ -144,32 +163,57 @@ class App(tk.Tk):
         in_rectification = False
         
         for line in lines:
-            if "🔍 ROOT CAUSE ANALYSIS:" in line:
+            # Check for various possible section headers
+            if any(header in line for header in ["🔍 ROOT CAUSE ANALYSIS:", "Root Cause:", "ROOT CAUSE:", "Root cause:", "root cause:"]):
                 in_root_cause = True
                 in_rectification = False
                 continue
-            elif "🛠️ RECTIFICATION STEPS:" in line:
+            elif any(header in line for header in ["🛠️ RECTIFICATION STEPS:", "RECOMMENDED ACTIONS:", "Next Steps:", "RECTIFICATION:", "Rectification:", "rectification:"]):
                 in_root_cause = False
                 in_rectification = True
                 continue
-            elif line.startswith("🚨") or line.startswith("🔍") or line.startswith("🛠️"):
+            elif any(header in line for header in ["🚨 LAST ERROR FOUND:", "🚨", "🔍", "🛠️", "📋", "⚠️", "🎯", "👤"]):
                 in_root_cause = False
                 in_rectification = False
                 continue
             
             if in_root_cause and line.strip():
                 root_cause += line + "\n"
-            elif in_rectification and line.strip() and (line.startswith("1)") or line.startswith("2)") or line.startswith("3)") or line.startswith("4)") or line.startswith("5)")):
-                rectification_steps.append(line.strip())
+            elif in_rectification and line.strip():
+                # Check for numbered steps or bullet points
+                if (line.startswith("1)") or line.startswith("2)") or line.startswith("3)") or 
+                    line.startswith("4)") or line.startswith("5)") or line.startswith("6)") or
+                    line.startswith("7)") or line.startswith("8)") or line.startswith("9)") or
+                    line.startswith("1.") or line.startswith("2.") or line.startswith("3.") or
+                    line.startswith("4.") or line.startswith("5.") or line.startswith("6.") or
+                    line.startswith("7.") or line.startswith("8.") or line.startswith("9.") or
+                    line.startswith("•") or line.startswith("-") or line.startswith("*")):
+                    rectification_steps.append(line.strip())
+        
+        # If no specific sections found, try to extract from the general analysis
+        if not root_cause and not rectification_steps:
+            # Look for any analysis content
+            analysis_content = self.last_analysis
+            if "Analysis unavailable" not in analysis_content and len(analysis_content) > 50:
+                root_cause = "Based on the log analysis, issues were identified in the restaurant website functionality."
+                rectification_steps = [
+                    "Review the log analysis above for specific error patterns",
+                    "Check cart functionality and user interaction issues",
+                    "Verify search and performance problems",
+                    "Implement fixes based on the identified patterns"
+                ]
         
         # Generate the golden prompt for Cursor
         golden_prompt = f"""You are an expert software developer. Based on the following analysis, please fix the identified issues in the restaurant website project.
 
 ROOT CAUSE ANALYSIS:
-{root_cause.strip()}
+{root_cause.strip() if root_cause else "Analysis completed - see details below"}
 
 RECTIFICATION STEPS TO IMPLEMENT:
-{chr(10).join([f"{i+1}. {step}" for i, step in enumerate(rectification_steps)])}
+{chr(10).join([f"{i+1}. {step}" for i, step in enumerate(rectification_steps)]) if rectification_steps else "1. Review the analysis above\n2. Implement fixes based on identified patterns\n3. Test the changes thoroughly"}
+
+FULL ANALYSIS DETAILS:
+{self.last_analysis}
 
 TASK:
 1. Review the root cause analysis above
@@ -213,9 +257,84 @@ Please implement these fixes step by step, explaining each change and why it's n
         tk.Button(button_frame, text="Copy to Clipboard", command=copy_to_clipboard, bg="#2196F3", fg="white").pack(side="left")
         tk.Button(button_frame, text="Close", command=prompt_window.destroy, bg="#757575", fg="white").pack(side="right")
 
+    def show_actions(self):
+        """Show user actions based on transaction IDs from log files."""
+        if not self.log_files:
+            messagebox.showwarning("Missing logs", "Please select log files first.")
+            return
+
+        self.status.set("Analyzing user actions...")
+        
+        def task():
+            try:
+                actions_text = analyze_user_actions(
+                    log_files=self.log_files,
+                    ollama_url=DEFAULT_OLLAMA_URL,
+                    model=MODEL_NAME,
+                )
+                
+                # Create a new window to display the actions
+                actions_window = tk.Toplevel(self)
+                actions_window.title("User Actions Analysis")
+                actions_window.geometry("900x700")
+                
+                # Create text widget with scrollbar
+                text_frame = tk.Frame(actions_window)
+                text_frame.pack(fill="both", expand=True, padx=10, pady=10)
+                
+                actions_text_widget = scrolledtext.ScrolledText(text_frame, wrap="word", height=30)
+                actions_text_widget.pack(fill="both", expand=True)
+                actions_text_widget.insert("1.0", actions_text)
+                actions_text_widget.config(state="disabled")  # Make it read-only
+                
+                # Add close button
+                button_frame = tk.Frame(actions_window)
+                button_frame.pack(fill="x", padx=10, pady=(0,10))
+                
+                tk.Button(button_frame, text="Close", command=actions_window.destroy, bg="#757575", fg="white").pack(side="right")
+                
+                self.status.set("Done")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to analyze user actions: {e}")
+                self.status.set("Error")
+
+        threading.Thread(target=task, daemon=True).start()
+
+    def on_mmm(self):
+        """Mirror/Mentor/Multiplier: derive from last error and render 3 lines."""
+        self.status.set("MMM building...")
+
+        def task():
+            try:
+                last_err = extract_last_error_text(self.last_analysis, self.log_files)
+                mirror, mentor, multiplier = generate_mmm(
+                    last_err,
+                    persona="developer",
+                    ollama_url=DEFAULT_OLLAMA_URL,
+                    model=MODEL_NAME,
+                )
+                header = "\n\n=== MMM — Mirror / Mentor / Multiplier ===\n"
+                block = (
+                    f"Mirror: {mirror}\n"
+                    f"Mentor: {mentor}\n"
+                    f"Multiplier: {multiplier}\n"
+                )
+                self.output.insert("end", header + block)
+                self.status.set("Done")
+            except Exception as e:
+                self.output.insert("end", f"\n\nMMM error: {e}\n")
+                self.status.set("Error")
+
+        threading.Thread(target=task, daemon=True).start()
+
+    def on_closing(self):
+        """Handle window closing."""
+        self.destroy()
+
 if __name__ == "__main__":
     try:
         app = App()
+        app.protocol("WM_DELETE_WINDOW", app.on_closing)  # Handle window close
         app.mainloop()
     except KeyboardInterrupt:
         print("\nApplication interrupted by user.")
