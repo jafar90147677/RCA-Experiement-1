@@ -39,6 +39,11 @@ receipts/
 *.log
 *.txt
 
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
 # Build files
 build/
 dist/
