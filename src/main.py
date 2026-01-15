@@ -204,13 +204,19 @@ class App(tk.Tk):
                 ]
         
         # Generate the golden prompt for Cursor
+        # Prepare rectification steps text (extract to avoid backslash in f-string)
+        if rectification_steps:
+            rectification_text = chr(10).join([f"{i+1}. {step}" for i, step in enumerate(rectification_steps)])
+        else:
+            rectification_text = "1. Review the analysis above\n2. Implement fixes based on identified patterns\n3. Test the changes thoroughly"
+        
         golden_prompt = f"""You are an expert software developer. Based on the following analysis, please fix the identified issues in the restaurant website project.
 
 ROOT CAUSE ANALYSIS:
 {root_cause.strip() if root_cause else "Analysis completed - see details below"}
 
 RECTIFICATION STEPS TO IMPLEMENT:
-{chr(10).join([f"{i+1}. {step}" for i, step in enumerate(rectification_steps)]) if rectification_steps else "1. Review the analysis above\n2. Implement fixes based on identified patterns\n3. Test the changes thoroughly"}
+{rectification_text}
 
 FULL ANALYSIS DETAILS:
 {self.last_analysis}
