@@ -1,0 +1,1 @@
+create a .log file which includes all errors only when error came in terminal it as a to store in .log file automatically.Strict, careful processing demanded: no hallucination, no assumptions, no sycophancy, no fiction. Deliver 10/10 Gold Standard Quality with elimination of all false positives. Do what is asked.100% Accurate response, no inferences, no artificial.
