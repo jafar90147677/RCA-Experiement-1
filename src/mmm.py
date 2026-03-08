@@ -9,15 +9,15 @@ import re
 
 try:
     # Optional import; caller may not have Ollama running
-    from ollama_client import ask_llama  # type: ignore
+    from ollama_clien import ask_lla # type: ignore
 except Exception:  # pragma: no cover - unavailable in tests
-    ask_llama = None  # type: ignore
+    ask_llama =  # type: ignore
 
 
-def _tail_lines(paths: List[str], bytes_cap_total: int = 500_000, bytes_cap_per_file: int = 200_000) -> List[str]:
-    lines: List[str] = []
-    approx = 0
-    # newest first
+def _tail_lines(pats: List[str], bytes_cap_total: int = 500_000, bytes_cap_per_file: int = 200_000) -> List[str]:
+    lines: List[st= [
+    approx = 
+    # newest fir
     files = []
     for p in paths or []:
         try:
