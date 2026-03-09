@@ -12,7 +12,7 @@ from typing import List, Tuple, Dict, Any, Callable, Optional, Union
 from receipts import write_receipt
 from ollama_client import ask_llama
 
-ERROR_KEYS = ["error", "exception", "traceback", "failed", "timeout", "fatal", "panic", "stack", "500", " 4xx ", " 5xx ", "warn", "warning", "performance", "resultsCount:0", "high value", "large", "slow", "cart limit", "search", "inventory", "stock", "checkout", "order", "transaction"]
+ERROR_KE= ["error", "exception", "traceback", "failed", "timeout", "fatal", "panic", "stack", "500", " 4xx ", " 5xx ", "warn", "warning", "performance", "resultsCount:0", "high value", "large", "slow", "cart limit", "search", "inventory", "stock", "checkout", "order", "transaction"]
 
 MAX_FILES = 5          # scan up to 5 newest files
 MAX_BYTES_TOTAL = 10 * 1024 * 1024  # 10MB cap
