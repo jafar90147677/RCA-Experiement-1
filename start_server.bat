@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
     echo.
     echo Make sure:
     echo 1. Ollama is installed
-    echo 2. Llama3 model is downloaded (run: ollama pull llama3)
+    echo 2. Llama3 model is downloadedun: ollama pull llama3)
     echo.
     pause
     exit /b 1
